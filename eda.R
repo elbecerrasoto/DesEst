@@ -2,29 +2,66 @@
 
 library(tidyverse)
 library(readxl)
+library(glue)
+source("renames.R")
 
 # MIP: matriz de insumo producto
 # COU: cuadros de oferta y utilizacion
 
+SKIP <- 5
 COLS <- c("path", "desc", "type", "aggreg", "scale")
+DATA <- "data/excels"
 
-COUs <- read_tsv("data/COU.tsv", col_names = COLS, col_types = "cffff")
-MIPs <- read_tsv("data/MIP.tsv", col_names = COLS, )
+COU <- read_tsv("data/COU.tsv", col_names = COLS, col_types = "cffff")
+MIP <- read_tsv("data/MIP.tsv", col_names = COLS, col_types = "cffff")
 
-MIPs_DESC <- c(pbasicos = "Oferta de bienes y servicios a precios básicos",   
-              pcompr = "Utilización de bienes y servicios a precios comprador",
-                  comercio_transporte = "Márgenes de comercio y transporte",  
-                  comercio = "Márgenes de comercio",                          
-                  trasnporte = "Márgenes de transporte",                      
-                  impuestos_Nsubsidios = "Impuestos netos de subsidios",
-                  impuestos = "Impuestos",                        
-                  subsidios = "Subsidios",                                    
-                  utilizacion = "Utilización de bienes y servicios a precios básicos") 
+# Fix names
+MIP <- MIP |>
+  mutate(
+    desc = fct_recode(desc, !!!MIP_DESC),
+    type = fct_recode(type, !!!MIP_TYPE),
+    aggreg = fct_recode(aggreg, !!!MIP_AGGREG),
+    scale = fct_recode(scale, !!!MIP_SCALE)
+  )
 
-COUs <- COUs |>
-  mutate(desc = fct_recode(desc, !!!MIPs_DESC))
-# COUs
-# 
-# oneH <- read_xlsx("data/COU/excels/COU_100.xlsx",
-#                   col_names = F, skip = 6)
-# oneH <- read_xlsx("data/COU/excels/COU_100.xlsx", skip = 5)
+COU <- COU |>
+  mutate(
+    desc = fct_recode(desc, !!!COU_DESC),
+    type = fct_recode(type, !!!COU_TYPE),
+    aggreg = fct_recode(aggreg, !!!COU_AGGREG),
+    scale = fct_recode(scale, !!!COU_SCALE)
+  )
+
+to_read_MIP <- MIP |>
+  filter(aggreg == "sector") |>
+  filter(desc == "por_industria") |>
+  filter(type == "dom_importado") |>
+  pull(path)
+
+to_read_COU <- COU |>
+  filter(aggreg == "sector") |>
+  filter(desc == "pbasicos") |>
+  filter(type == "eco_total") |>
+  pull(path)
+
+# Read Matrices
+to_read_MIP <- glue("{DATA}/{to_read_MIP}")
+to_read_COU <- glue("{DATA}/{to_read_COU}")
+
+# Data
+mip <- read_xlsx(to_read_MIP, skip = SKIP)
+cou <- read_xlsx(to_read_COU, skip = SKIP)
+
+# remove NAs rows
+mip <- mip %>%
+  rowwise() %>%
+  filter(!all(is.na(across(-...1)))) %>%
+  ungroup()
+
+cou <- cou %>%
+  rowwise() %>%
+  filter(!all(is.na(across(-...1)))) %>%
+  ungroup()
+
+dim(mip)
+dim(cou)
