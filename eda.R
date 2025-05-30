@@ -5,6 +5,8 @@ library(readxl)
 library(glue)
 source("renames.R")
 
+# TODO: cofecientes
+
 # MIP: matriz de insumo producto
 # COU: cuadros de oferta y utilizacion
 
@@ -32,8 +34,12 @@ COU <- COU |>
     scale = fct_recode(scale, !!!COU_SCALE)
   )
 
+view(MIP)
+view(COU)
+
+
 to_read_MIP <- MIP |>
-  filter(aggreg == "sector") |>
+  filter(aggreg == "subsector") |>
   filter(desc == "por_industria") |>
   filter(type == "dom_importado") |>
   pull(path)
@@ -52,6 +58,7 @@ to_read_COU <- glue("{DATA}/{to_read_COU}")
 mip <- read_xlsx(to_read_MIP, skip = SKIP)
 cou <- read_xlsx(to_read_COU, skip = SKIP)
 
+view(mip)
 # remove NAs rows
 mip <- mip %>%
   rowwise() %>%
@@ -62,6 +69,6 @@ cou <- cou %>%
   rowwise() %>%
   filter(!all(is.na(across(-...1)))) %>%
   ungroup()
-
+view(cou)
 dim(mip)
 dim(cou)
